@@ -1,0 +1,12 @@
+# Runtime. Versions marked (tested) were installed and exercised in the build sandbox; the rest are
+# pinned from known releases but were NOT installed there (no network) - run the tests after `pip install`.
+fastapi==0.115.6
+uvicorn[standard]==0.32.1
+python-multipart==0.0.20
+pydantic==2.10.3
+pdfplumber==0.11.9          # (tested) uses pypdfium2 for page rendering
+pytesseract==0.3.13         # (tested)
+opencv-python-headless==4.13.0.92   # (tested)
+Pillow==12.1.1              # (tested)
+numpy==2.4.4                # (tested)
+openpyxl==3.1.5             # (tested)

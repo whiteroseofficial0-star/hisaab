@@ -1,0 +1,146 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    color-scheme: light;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-paper font-sans text-ink antialiased;
+    font-feature-settings: 'kern' 1, 'liga' 1, 'cv11' 1;
+  }
+
+  h1,
+  h2 {
+    @apply font-display font-normal;
+    letter-spacing: -0.015em;
+  }
+
+  ::selection {
+    background: #bcd4c8;
+    color: #16332c;
+  }
+
+  :focus-visible {
+    outline: 2px solid #2e6353;
+    outline-offset: 3px;
+  }
+}
+
+@layer components {
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-md border border-transparent px-4 py-2.5 text-[13px] font-medium leading-none transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-45;
+  }
+
+  .btn-primary {
+    @apply bg-pine-800 text-surface hover:bg-pine-950;
+  }
+
+  .btn-secondary {
+    @apply border-line bg-surface text-ink hover:border-slate-400 hover:bg-paper;
+  }
+
+  .btn-danger {
+    @apply border-red-200 bg-transparent text-red-800 hover:border-red-300 hover:bg-red-50;
+  }
+
+  .card {
+    @apply rounded-lg border border-line bg-surface p-6 shadow-none;
+  }
+
+  .input {
+    @apply w-full rounded-[4px] border border-line bg-white px-3 py-2 text-sm text-ink placeholder:text-ink-muted/60 focus:border-pine-600 focus:outline-none focus:ring-2 focus:ring-pine-600/10;
+  }
+
+  .cell-input {
+    @apply w-full rounded-none border border-transparent bg-transparent px-2 py-2 text-sm text-ink hover:border-line focus:border-pine-600 focus:bg-white focus:outline-none focus:ring-2 focus:ring-pine-600/10;
+  }
+
+  .eyebrow {
+    @apply font-mono text-[10px] font-medium uppercase tracking-[0.2em] text-pine-700;
+  }
+
+  .rule {
+    @apply h-px w-full bg-line;
+  }
+
+  .ledger-lines {
+    background-image: repeating-linear-gradient(
+      to bottom,
+      transparent 0,
+      transparent 31px,
+      rgba(28, 40, 35, 0.06) 31px,
+      rgba(28, 40, 35, 0.06) 32px
+    );
+  }
+
+  .prose-hisaab h2 {
+    @apply mb-3 mt-10 text-[1.65rem] leading-tight text-ink;
+  }
+
+  .prose-hisaab h3 {
+    @apply mb-2 mt-6 text-lg font-semibold text-ink;
+  }
+
+  .prose-hisaab p {
+    @apply my-4 leading-[1.8] text-ink-soft;
+  }
+
+  .prose-hisaab ul {
+    @apply my-4 list-disc space-y-1.5 pl-5 text-ink-soft;
+  }
+
+  .prose-hisaab ol {
+    @apply my-4 list-decimal space-y-1.5 pl-5 text-ink-soft;
+  }
+
+  .prose-hisaab a {
+    @apply text-pine-700 underline decoration-pine-300 underline-offset-2 hover:decoration-pine-700;
+  }
+
+  .prose-hisaab code {
+    @apply rounded border border-line bg-paper px-1.5 py-0.5 font-mono text-[0.85em] text-ink;
+  }
+}
+
+/* Native progress elements, restyled without the default browser chrome. */
+progress {
+  height: 6px;
+  appearance: none;
+  border: 0;
+  border-radius: 999px;
+  background: #e2dacb;
+  overflow: hidden;
+}
+
+progress::-webkit-progress-bar {
+  background: #e2dacb;
+}
+
+progress::-webkit-progress-value {
+  background: #2e6353;
+  border-radius: 999px;
+}
+
+progress::-moz-progress-bar {
+  background: #2e6353;
+  border-radius: 999px;
+}
+
+details > summary {
+  list-style: none;
+}
+
+details > summary::-webkit-details-marker {
+  display: none;
+}
+
+details[open] .faq-plus {
+  transform: rotate(45deg);
+}
