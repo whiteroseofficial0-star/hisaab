@@ -24,8 +24,8 @@ export default function Preview({ job, files }: { job: JobRef; files: JobStatus[
 
   if (!file) return null
   return (
-    <section aria-label="Original document" className="border border-line bg-surface p-3">
-      <div className="mb-3 flex items-center justify-between gap-3 border-b border-line pb-2.5">
+    <section aria-label="Original document" className="border border-line bg-surface p-4">
+      <div className="mb-3 flex items-center justify-between gap-3 border-b border-line pb-3">
         <h3 className="font-mono text-[10px] uppercase tracking-[0.14em] text-ink-muted">Original document</h3>
         {files.length > 1 ? (
           <label className="text-sm">

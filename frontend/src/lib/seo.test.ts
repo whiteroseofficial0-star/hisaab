@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { articleLd, collectionPageLd, howToLd, webApplicationLd, webPageLd } from './seo'
+import { articleLd, collectionPageLd, faqPageLd, howToLd, webApplicationLd, webPageLd } from './seo'
 
 describe('SEO structured data', () => {
   it('marks the converter as a free web application', () => {
@@ -25,5 +25,12 @@ describe('SEO structured data', () => {
 
   it('builds basic web page markup', () => {
     expect(webPageLd({ name: 'About', description: 'About', path: '/about/' })['@type']).toBe('WebPage')
+  })
+
+  it('builds FAQ markup with answers attached to questions', () => {
+    const ld = faqPageLd([{ q: 'Is Hisaab free?', a: 'Yes.' }, { q: 'Is data kept?', a: 'No.' }])
+    expect(ld['@type']).toBe('FAQPage')
+    expect(ld.mainEntity).toHaveLength(2)
+    expect(ld.mainEntity[0]).toMatchObject({ name: 'Is Hisaab free?', acceptedAnswer: { '@type': 'Answer', text: 'Yes.' } })
   })
 })

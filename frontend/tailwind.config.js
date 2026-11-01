@@ -1,31 +1,33 @@
 /** @type {import('tailwindcss').Config} */
 export default {
+  darkMode: 'class',
   content: ['./index.html', './src/**/*.{ts,tsx}'],
   theme: {
     extend: {
       colors: {
-        paper: '#F5F1E8',
-        surface: '#FFFCF6',
+        // Themeable surfaces: values live in src/index.css (:root and .dark).
+        paper: 'rgb(var(--paper) / <alpha-value>)',
+        surface: 'rgb(var(--surface) / <alpha-value>)',
         ink: {
-          DEFAULT: '#1C2823',
-          soft: '#4B574F',
-          muted: '#7A7D72',
+          DEFAULT: 'rgb(var(--ink) / <alpha-value>)',
+          soft: 'rgb(var(--ink-soft) / <alpha-value>)',
+          muted: 'rgb(var(--ink-muted) / <alpha-value>)',
         },
         pine: {
-          50: '#EEF4F0',
-          100: '#DCE9E2',
-          200: '#BCD4C8',
-          300: '#93B8A7',
-          400: '#669982',
-          500: '#447D68',
-          600: '#2E6353',
-          700: '#234F43',
-          800: '#1C3F36',
-          900: '#16332C',
-          950: '#0C1E19',
+          50: 'rgb(var(--pine-50) / <alpha-value>)',
+          100: 'rgb(var(--pine-100) / <alpha-value>)',
+          200: 'rgb(var(--pine-200) / <alpha-value>)',
+          300: 'rgb(var(--pine-300) / <alpha-value>)',
+          400: 'rgb(var(--pine-400) / <alpha-value>)',
+          500: 'rgb(var(--pine-500) / <alpha-value>)',
+          600: 'rgb(var(--pine-600) / <alpha-value>)',
+          700: 'rgb(var(--pine-700) / <alpha-value>)',
+          800: 'rgb(var(--pine-800) / <alpha-value>)',
+          900: 'rgb(var(--pine-900) / <alpha-value>)',
+          950: 'rgb(var(--pine-950) / <alpha-value>)',
         },
-        line: '#DDD6C7',
-        // Warm neutral scale, used across the existing markup.
+        line: 'rgb(var(--line) / <alpha-value>)',
+        // Warm neutral scale stays fixed: it is used on permanently dark panels.
         slate: {
           50: '#F7F3EA',
           100: '#F0EBDF',

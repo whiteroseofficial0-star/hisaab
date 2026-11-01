@@ -41,7 +41,7 @@ export default function UploadZone({ rules, onFiles, disabled }: { rules: Upload
         onDragOver={(e) => { e.preventDefault(); if (!disabled) setOver(true) }}
         onDragLeave={() => setOver(false)}
         onDrop={(e) => { e.preventDefault(); setOver(false); if (!disabled) handle(e.dataTransfer.files) }}
-        className={`flex flex-col items-center border border-dashed px-6 py-9 text-center transition-colors ${
+        className={`flex flex-col items-center border border-dashed px-6 py-10 text-center transition-colors ${
           over ? 'border-pine-600 bg-pine-50' : 'border-slate-300 bg-paper/40'
         } ${disabled ? 'opacity-60' : ''}`}
       >
@@ -63,11 +63,11 @@ export default function UploadZone({ rules, onFiles, disabled }: { rules: Upload
           htmlFor="hisaab-file-input"
           className={`btn btn-primary mt-6 cursor-pointer ${disabled ? 'pointer-events-none opacity-50' : ''}`}
         >
-          Choose a file
+          {rules.multiple ? 'Choose files' : 'Choose a file'}
         </label>
       </div>
       {error && (
-        <p role="alert" className="mt-3 border-l-2 border-red-700 bg-red-50 px-3 py-2 text-sm text-red-900">
+        <p role="alert" className="mt-3 border-l-2 border-red-700 bg-red-50 px-3 py-2 text-sm text-red-900 dark:bg-red-950/35 dark:text-red-100">
           {error}
         </p>
       )}

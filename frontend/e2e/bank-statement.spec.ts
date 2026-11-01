@@ -1,9 +1,12 @@
 import { expect, test } from '@playwright/test'
 import { readFileSync } from 'node:fs'
 import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 
 // Needs: python scripts/make_samples.py (writes FICTIONAL samples to ../samples) and Tesseract only for scanned samples.
-const sample = (f: string) => path.resolve(__dirname, '../../samples', f)
+// (the package is ESM, so __dirname is not available)
+const here = path.dirname(fileURLToPath(import.meta.url))
+const sample = (f: string) => path.resolve(here, '../../samples', f)
 
 test('bank statement: upload, edit, export Excel contains the edit', async ({ page }) => {
   await page.goto('/tools/bank-statement-to-excel/')
@@ -25,5 +28,5 @@ test('receipt: upload a receipt image and see the total', async ({ page }) => {
   await page.goto('/tools/receipt-to-excel/')
   await page.setInputFiles('input[type=file]', sample('receipt.png'))
   await expect(page.getByRole('table', { name: 'Receipts' })).toBeVisible({ timeout: 90_000 })
-  await expect(page.getByLabel('Total, row 1')).toHaveValue('210')
+  await expect(page.getByLabel('Total, row 1', { exact: true })).toHaveValue('210')
 })

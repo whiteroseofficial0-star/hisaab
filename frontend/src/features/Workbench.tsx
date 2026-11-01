@@ -2,8 +2,8 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { Check, Download, Loader2, RotateCcw, Save, Trash2, XCircle } from 'lucide-react'
 import UploadZone from '../components/UploadZone'
 import Preview from '../components/Preview'
-import { ApiError, createJob, deleteJob, downloadBlob, exportResult, getJob, getResult, patchResult } from '../services/api'
-import type { FileKind, JobRef, JobStatus, Result, ToolKey } from '../types'
+import { ApiError, createJob, deleteJob, downloadBlob, exportResult, getHealth, getJob, getResult, patchResult } from '../services/api'
+import type { FileKind, Health, JobRef, JobStatus, Result, ToolKey } from '../types'
 import { BankReview, InvoiceReview, ReceiptReview, TablesReview } from './reviews'
 
 type Phase =
@@ -14,12 +14,24 @@ type Phase =
   | { k: 'error'; message: string }
 
 const MAX_MB = Number(import.meta.env.VITE_MAX_UPLOAD_MB ?? 20)
-const EXPORTS: Record<ToolKey, { label: string; format: 'xlsx' | 'csv' | 'zip'; part?: 'details' | 'line_items' }[]> = {
+
+// Tesseract language codes shown to users; anything else falls back to the code itself.
+const LANG_NAMES: Record<string, string> = {
+  eng: 'English', hin: 'Hindi', mar: 'Marathi', tam: 'Tamil', tel: 'Telugu', kan: 'Kannada',
+  mal: 'Malayalam', guj: 'Gujarati', ben: 'Bengali', pan: 'Punjabi', urd: 'Urdu', ara: 'Arabic',
+  fra: 'French', deu: 'German', spa: 'Spanish', ita: 'Italian', por: 'Portuguese', nld: 'Dutch',
+  rus: 'Russian', chi_sim: 'Chinese (simplified)', chi_tra: 'Chinese (traditional)', jpn: 'Japanese', kor: 'Korean',
+}
+const langLabel = (code: string) => LANG_NAMES[code] ?? code.toUpperCase()
+const EXPORTS: Record<ToolKey, { label: string; format: 'xlsx' | 'csv' | 'zip'; part?: 'details' | 'line_items' | 'flat' }[]> = {
   bank_statement: [{ label: 'Download Excel (.xlsx)', format: 'xlsx' }, { label: 'Download CSV', format: 'csv' }],
   invoice: [{ label: 'Download Excel (.xlsx)', format: 'xlsx' }, { label: 'CSV: details', format: 'csv', part: 'details' },
     { label: 'CSV: line items', format: 'csv', part: 'line_items' }, { label: 'Both CSVs (ZIP)', format: 'zip' }],
-  receipt: [{ label: 'Download Excel (.xlsx)', format: 'xlsx' }, { label: 'CSV: receipts', format: 'csv' },
-    { label: 'CSV: line items', format: 'csv', part: 'line_items' }, { label: 'Both CSVs (ZIP)', format: 'zip' }],
+  receipt: [{ label: 'Download Excel (.xlsx)', format: 'xlsx' },
+    { label: 'CSV (receipts + line items)', format: 'csv', part: 'flat' },
+    { label: 'CSV: receipts only', format: 'csv', part: 'details' },
+    { label: 'CSV: line items only', format: 'csv', part: 'line_items' },
+    { label: 'Both CSVs (ZIP)', format: 'zip' }],
   tables: [{ label: 'Download Excel (.xlsx)', format: 'xlsx' }, { label: 'CSV (one table)', format: 'csv' }, { label: 'CSVs (ZIP)', format: 'zip' }],
 }
 
@@ -30,9 +42,14 @@ export default function Workbench({ tool, accept, multiple = false }: { tool: To
   const [dirty, setDirty] = useState(false)
   const [busy, setBusy] = useState<string | null>(null)
   const [notice, setNotice] = useState('')
+  const [health, setHealth] = useState<Health | null>(null)
+  const [lang, setLang] = useState('')
   const abort = useRef<AbortController | null>(null)
   const alive = useRef(true)
   useEffect(() => { alive.current = true; return () => { alive.current = false; abort.current?.abort() } }, [])
+  useEffect(() => {
+    getHealth().then((h) => { if (alive.current) setHealth(h) }).catch(() => undefined)
+  }, [])
 
   const reset = useCallback(() => { setPhase({ k: 'idle' }); setJob(null); setResult(null); setDirty(false); setNotice('') }, [])
 
@@ -65,7 +82,7 @@ export default function Workbench({ tool, accept, multiple = false }: { tool: To
     abort.current = new AbortController()
     setPhase({ k: 'uploading', pct: 0 })
     try {
-      const created = await createJob(tool, files, (pct) => setPhase({ k: 'uploading', pct }), abort.current.signal)
+      const created = await createJob(tool, files, (pct) => setPhase({ k: 'uploading', pct }), abort.current.signal, lang || undefined)
       const ref = { job_id: created.job_id, token: created.token }
       setJob(ref)
       setPhase({ k: 'processing', status: null })
@@ -115,13 +132,35 @@ export default function Workbench({ tool, accept, multiple = false }: { tool: To
   const update = (r: Result) => { setResult(r); setDirty(true) }
 
   return (
-    <div id="upload" className="@container scroll-mt-24">
+    <div id="upload" className="cq scroll-mt-24">
       <div className="sr-only" role="status" aria-live="polite">{notice}</div>
 
-      {phase.k === 'idle' && <UploadZone rules={{ accept, multiple, maxMb: MAX_MB, maxFiles: multiple ? 10 : 1 }} onFiles={start} />}
+      {phase.k === 'idle' && (
+        <>
+          {health && !health.ocr.available && (
+            <div role="status" className="mb-5 border-l-2 border-amber-500 bg-amber-50/70 px-4 py-3 text-sm text-amber-950 dark:bg-amber-950/25 dark:text-amber-100">
+              <p className="font-medium">Scanned pages and photos cannot be read on this server</p>
+              <p className="mt-1.5 text-[13px] leading-6">
+                The OCR engine is missing, so only PDFs with selectable text will work. {health.ocr.hint}
+              </p>
+            </div>
+          )}
+          {health?.ocr.available && health.ocr.languages.length > 1 && (
+            <div className="mb-5 flex flex-wrap items-center gap-x-3 gap-y-2">
+              <label htmlFor="ocr-lang" className="font-mono text-[10px] uppercase tracking-[0.12em] text-ink-muted">OCR language</label>
+              <select id="ocr-lang" className="input w-auto py-1.5 text-sm" value={lang} onChange={(e) => setLang(e.target.value)}>
+                <option value="">Server default ({langLabel(health.ocr.default_language)})</option>
+                {health.ocr.languages.map((code) => <option key={code} value={code}>{langLabel(code)}</option>)}
+              </select>
+              <span className="text-xs text-ink-muted">Used for scans and photos only.</span>
+            </div>
+          )}
+          <UploadZone rules={{ accept, multiple, maxMb: MAX_MB, maxFiles: multiple ? 10 : 1 }} onFiles={start} />
+        </>
+      )}
 
       {phase.k === 'uploading' && (
-        <div className="border border-line bg-paper/50 p-5" role="status">
+        <div className="border border-line bg-paper/50 p-6" role="status">
           <p className="eyebrow">Uploading</p>
           <p className="mt-2 text-[15px] font-medium text-ink">{phase.pct}% transferred</p>
           <progress className="mt-3 w-full" max={100} value={phase.pct} aria-label="Upload progress" />
@@ -130,7 +169,7 @@ export default function Workbench({ tool, accept, multiple = false }: { tool: To
       )}
 
       {phase.k === 'processing' && (
-        <div className="border border-line bg-paper/50 p-5" role="status">
+        <div className="border border-line bg-paper/50 p-6" role="status">
           <p className="eyebrow flex items-center gap-2">
             <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden /> Working
           </p>
@@ -151,8 +190,8 @@ export default function Workbench({ tool, accept, multiple = false }: { tool: To
       )}
 
       {phase.k === 'error' && (
-        <div className="border border-red-200 bg-red-50/60 p-5" role="alert">
-          <p className="flex items-center gap-2 text-[15px] font-semibold text-red-900"><XCircle className="h-4 w-4" aria-hidden /> We could not process this file</p>
+        <div className="border border-red-200 bg-red-50/60 p-6 dark:border-red-900/60 dark:bg-red-950/35" role="alert">
+          <p className="flex items-center gap-2 text-[15px] font-semibold text-red-900 dark:text-red-100"><XCircle className="h-4 w-4" aria-hidden /> We could not process this file</p>
           <p className="mt-2 text-sm leading-6 text-ink-soft">{phase.message}</p>
           <button type="button" className="btn btn-primary mt-5" onClick={async () => { if (job) await deleteJob(job).catch(() => undefined); reset() }}>
             <RotateCcw className="h-4 w-4" aria-hidden /> Try another file
@@ -162,7 +201,7 @@ export default function Workbench({ tool, accept, multiple = false }: { tool: To
 
       {phase.k === 'review' && result && job && (
         <div>
-          <div className="mb-5 flex flex-wrap items-center gap-x-3 gap-y-2 border-y border-pine-200 bg-pine-50/60 px-4 py-3">
+          <div className="mb-6 flex flex-wrap items-center gap-x-3 gap-y-2 border-y border-pine-200 bg-pine-50/60 px-4 py-3.5">
             <span className="flex items-center gap-2 text-[13px] font-medium text-pine-900">
               <Check className="h-4 w-4 text-pine-700" aria-hidden /> Extraction ready.
             </span>
@@ -173,13 +212,13 @@ export default function Workbench({ tool, accept, multiple = false }: { tool: To
           </div>
           {notice && <p className="mb-4 font-mono text-[10px] uppercase tracking-[0.12em] text-ink-muted" aria-hidden>{notice}</p>}
 
-          <div className="grid grid-cols-1 gap-5 @[60rem]:grid-cols-[minmax(0,1.9fr)_minmax(0,1fr)]">
-            <div className="min-w-0 border border-line bg-surface p-4 sm:p-5">
+          <div className="review-grid">
+            <div className="min-w-0 border border-line bg-surface p-5 sm:p-6">
               {tool === 'bank_statement' && <BankReview result={result} setResult={update} />}
               {tool === 'invoice' && <InvoiceReview result={result} setResult={update} />}
               {tool === 'receipt' && <ReceiptReview result={result} setResult={update} />}
               {tool === 'tables' && <TablesReview result={result} setResult={update} />}
-              <div className="mt-6 flex flex-wrap gap-2 border-t border-line pt-5" role="group" aria-label="Export">
+              <div className="mt-6 flex flex-wrap gap-2 border-t border-line pt-6" role="group" aria-label="Export">
                 {EXPORTS[tool].map((e, i) => (
                   <button key={e.label} type="button" className={`btn ${i === 0 ? 'btn-primary' : 'btn-secondary'}`} disabled={busy !== null} onClick={() => void doExport(e)}>
                     {busy === e.label ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : <Download className="h-4 w-4" aria-hidden />} {e.label}
@@ -190,7 +229,7 @@ export default function Workbench({ tool, accept, multiple = false }: { tool: To
                 Exports include all your edits · files stay on the server until they expire or you delete them
               </p>
             </div>
-            <div className="min-w-0 xl:sticky xl:top-24 xl:self-start"><Preview job={job} files={phase.status.files} /></div>
+            <div className="min-w-0 self-start xl:sticky xl:top-24"><Preview job={job} files={phase.status.files} /></div>
           </div>
         </div>
       )}

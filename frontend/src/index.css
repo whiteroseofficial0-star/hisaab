@@ -5,6 +5,50 @@
 @layer base {
   :root {
     color-scheme: light;
+
+    /* Paper ledger palette (light). */
+    --paper: 245 241 232;
+    --surface: 255 252 246;
+    --ink: 28 40 35;
+    --ink-soft: 75 87 79;
+    --ink-muted: 122 125 114;
+    --line: 221 214 199;
+
+    --pine-50: 238 244 240;
+    --pine-100: 220 233 226;
+    --pine-200: 188 212 200;
+    --pine-300: 147 184 167;
+    --pine-400: 102 153 130;
+    --pine-500: 68 125 104;
+    --pine-600: 46 99 83;
+    --pine-700: 35 79 67;
+    --pine-800: 28 63 54;
+    --pine-900: 22 51 44;
+    --pine-950: 12 30 25;
+  }
+
+  .dark {
+    color-scheme: dark;
+
+    /* Same palette, inverted for night reading. */
+    --paper: 16 21 18;
+    --surface: 24 31 27;
+    --ink: 236 233 224;
+    --ink-soft: 184 190 181;
+    --ink-muted: 139 146 137;
+    --line: 46 56 50;
+
+    --pine-50: 20 33 28;
+    --pine-100: 25 42 35;
+    --pine-200: 35 59 49;
+    --pine-300: 111 162 140;
+    --pine-400: 127 179 156;
+    --pine-500: 150 198 176;
+    --pine-600: 175 216 195;
+    --pine-700: 181 220 201;
+    --pine-800: 203 231 216;
+    --pine-900: 216 238 226;
+    --pine-950: 8 18 14;
   }
 
   html {
@@ -27,9 +71,18 @@
     color: #16332c;
   }
 
+  .dark ::selection {
+    background: #2e6353;
+    color: #f5f1e8;
+  }
+
   :focus-visible {
     outline: 2px solid #2e6353;
     outline-offset: 3px;
+  }
+
+  .dark :focus-visible {
+    outline-color: #93b8a7;
   }
 }
 
@@ -38,8 +91,14 @@
     @apply inline-flex items-center justify-center gap-2 rounded-md border border-transparent px-4 py-2.5 text-[13px] font-medium leading-none transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-45;
   }
 
+  /* Primary stays lithographic dark green in both themes, so it always reads as the action. */
   .btn-primary {
-    @apply bg-pine-800 text-surface hover:bg-pine-950;
+    background-color: #1c3f36;
+    color: #fffcf6;
+  }
+
+  .btn-primary:hover:not(:disabled) {
+    background-color: #0c1e19;
   }
 
   .btn-secondary {
@@ -50,6 +109,16 @@
     @apply border-red-200 bg-transparent text-red-800 hover:border-red-300 hover:bg-red-50;
   }
 
+  .dark .btn-danger {
+    border-color: rgb(127 29 29 / 0.7);
+    color: #fca5a5;
+  }
+
+  .dark .btn-danger:hover {
+    border-color: rgb(153 27 27 / 0.8);
+    background-color: rgb(69 10 10 / 0.35);
+  }
+
   .card {
     @apply rounded-lg border border-line bg-surface p-6 shadow-none;
   }
@@ -58,8 +127,16 @@
     @apply w-full rounded-[4px] border border-line bg-white px-3 py-2 text-sm text-ink placeholder:text-ink-muted/60 focus:border-pine-600 focus:outline-none focus:ring-2 focus:ring-pine-600/10;
   }
 
+  .dark .input {
+    background-color: rgb(12 18 15);
+  }
+
   .cell-input {
     @apply w-full rounded-none border border-transparent bg-transparent px-2 py-2 text-sm text-ink hover:border-line focus:border-pine-600 focus:bg-white focus:outline-none focus:ring-2 focus:ring-pine-600/10;
+  }
+
+  .dark .cell-input:focus {
+    background-color: rgb(12 18 15);
   }
 
   .eyebrow {
@@ -77,6 +154,16 @@
       transparent 31px,
       rgba(28, 40, 35, 0.06) 31px,
       rgba(28, 40, 35, 0.06) 32px
+    );
+  }
+
+  .dark .ledger-lines {
+    background-image: repeating-linear-gradient(
+      to bottom,
+      transparent 0,
+      transparent 31px,
+      rgba(236, 233, 224, 0.07) 31px,
+      rgba(236, 233, 224, 0.07) 32px
     );
   }
 
@@ -133,6 +220,22 @@ progress::-moz-progress-bar {
   border-radius: 999px;
 }
 
+.dark progress {
+  background: #233b31;
+}
+
+.dark progress::-webkit-progress-bar {
+  background: #233b31;
+}
+
+.dark progress::-webkit-progress-value {
+  background: #6fa28c;
+}
+
+.dark progress::-moz-progress-bar {
+  background: #6fa28c;
+}
+
 details > summary {
   list-style: none;
 }
@@ -143,4 +246,111 @@ details > summary::-webkit-details-marker {
 
 details[open] .faq-plus {
   transform: rotate(45deg);
+}
+
+/* ------------------------------------------------------------------ *
+ * Container queries (native CSS, no plugin needed).
+ * Used by the review desk so the editable table and the original
+ * document sit side by side only when the panel is actually wide
+ * enough — on the home hero they stay stacked.
+ * ------------------------------------------------------------------ */
+.cq {
+  container-type: inline-size;
+}
+
+.review-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1.25rem;
+}
+
+@container (min-width: 60rem) {
+  .review-grid {
+    grid-template-columns: minmax(0, 1.9fr) minmax(0, 1fr);
+  }
+}
+
+.bank-meta {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+@container (min-width: 40rem) {
+  .bank-meta {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+.invoice-fields {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+@container (min-width: 34rem) {
+  .invoice-fields {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@container (min-width: 56rem) {
+  .invoice-fields {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.table-cols {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+@container (min-width: 34rem) {
+  .table-cols {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@container (min-width: 50rem) {
+  .table-cols {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+/* ------------------------------------------------------------------ *
+ * Entrance motion for the home hero. Duration and ease borrow from
+ * print: a sheet settling onto the desk, not a bounce. Replays each
+ * time the page is visited because the route remounts.
+ * ------------------------------------------------------------------ */
+@keyframes hisaab-rise {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes hisaab-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.reveal {
+  animation: hisaab-rise 0.75s cubic-bezier(0.21, 0.61, 0.35, 1) both;
+}
+
+.reveal-soft {
+  animation: hisaab-fade 0.9s ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal,
+  .reveal-soft {
+    animation: none;
+  }
 }

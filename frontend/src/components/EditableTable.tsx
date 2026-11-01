@@ -33,7 +33,7 @@ function Cell({ col, value, onCommit, rowLabel }: { col: Col; value: unknown; on
       aria-invalid={invalid}
       title={invalid ? 'Enter a number, e.g. 1234.50' : undefined}
       inputMode={col.type === 'number' ? 'decimal' : undefined}
-      className={`cell-input ${col.type === 'number' ? 'text-right tabular-nums' : ''} ${invalid ? 'border-red-500 bg-red-50' : ''}`}
+      className={`cell-input ${col.type === 'number' ? 'text-right tabular-nums' : ''} ${invalid ? 'border-red-500 bg-red-50 dark:border-red-800 dark:bg-red-950/40' : ''}`}
       value={shown}
       onChange={(e) => {
         const v = e.target.value
@@ -111,10 +111,10 @@ export default function EditableTable({ label, columns, rows, onChange, newRow, 
               const flags = r.flags ?? []
               const rowLabel = `row ${cur * pageSize + i + 1}`
               return (
-                <tr key={r.id} className={`border-t border-line/70 align-top transition-colors first:border-t-0 hover:bg-paper/40 ${flags.length ? 'bg-amber-50/60' : ''}`}>
+                <tr key={r.id} className={`border-t border-line/70 align-top transition-colors first:border-t-0 hover:bg-paper/40 ${flags.length ? 'bg-amber-50/60 dark:bg-amber-950/20' : ''}`}>
                   <td className="px-2 py-2 text-xs">
                     {flags.length > 0 && (
-                      <span className="inline-flex items-center gap-1 font-mono text-[9px] font-medium uppercase tracking-[0.08em] text-amber-800" title={flags.map((f) => flagMessages[f] ?? f).join('\n')}>
+                      <span className="inline-flex items-center gap-1 font-mono text-[9px] font-medium uppercase tracking-[0.08em] text-amber-800 dark:text-amber-200" title={flags.map((f) => flagMessages[f] ?? f).join('\n')}>
                         <AlertTriangle className="h-3.5 w-3.5" aria-hidden /> Check ({flags.length})
                         <span className="sr-only">: {flags.map((f) => flagMessages[f] ?? f).join('; ')}</span>
                       </span>

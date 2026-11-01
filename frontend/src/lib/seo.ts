@@ -108,6 +108,17 @@ export function collectionPageLd(opts: { name: string; description: string; path
   }
 }
 
+export function faqPageLd(faqs: { q: string; a: string }[]) {
+  return {
+    '@type': 'FAQPage',
+    mainEntity: faqs.map((f) => ({
+      '@type': 'Question',
+      name: f.q,
+      acceptedAnswer: { '@type': 'Answer', text: f.a },
+    })),
+  }
+}
+
 export function webPageLd(opts: { name: string; description: string; path: string }) {
   return {
     '@type': 'WebPage',

@@ -8,7 +8,7 @@ const money = (n: number | null | undefined) => (n == null ? '—' : n.toLocaleS
 export function Warnings({ items }: { items: string[] }) {
   if (!items?.length) return null
   return (
-    <div role="status" className="mb-5 border-l-2 border-amber-500 bg-amber-50/70 px-4 py-3 text-sm text-amber-950">
+    <div role="status" className="mb-5 border-l-2 border-amber-500 bg-amber-50/70 px-4 py-3 text-sm text-amber-950 dark:bg-amber-950/25 dark:text-amber-100">
       <p className="flex items-center gap-2 font-medium"><AlertTriangle className="h-4 w-4" aria-hidden /> Please check</p>
       <ul className="mt-1.5 list-disc space-y-1 pl-5 text-[13px] leading-6">{items.map((w) => <li key={w}>{w}</li>)}</ul>
     </div>
@@ -35,10 +35,20 @@ export function BankReview({ result, setResult }: { result: Result; setResult: (
   const credit = rows.reduce((s, r) => s + Math.round(((r.credit as number) || 0) * 100), 0) / 100
   const setMetaNum = (k: string, v: string) => { const n = parseNumber(v); if (n !== undefined) setResult({ ...result, metadata: { ...meta, [k]: n } }) }
 
+  const pages: { page: number; method: string }[] = result.extraction?.pages ?? []
+
   return (
     <div>
       <Warnings items={result.warnings} />
-      <dl className="mb-6 grid grid-cols-2 gap-x-6 gap-y-4 border-b border-line pb-5 text-sm @[40rem]:grid-cols-4">
+      {pages.length > 0 && (
+        <p className="mb-5 text-xs leading-5 text-ink-muted">
+          <span className="font-mono text-[9px] uppercase tracking-[0.12em]">How this file was read</span>{' '}
+          <span data-testid="read-methods">
+            {pages.map((p) => `Page ${p.page}: ${p.method === 'ocr' ? 'OCR (approximate)' : 'selectable text'}`).join(' · ')}
+          </span>
+        </p>
+      )}
+      <dl className="bank-meta mb-6 gap-x-6 gap-y-4 border-b border-line pb-5 text-sm">
         {[['Bank', meta.bank_name], ['Account holder', meta.account_holder], ['Account (masked)', meta.account_number_masked],
           ['Period', meta.period_from ? `${meta.period_from} to ${meta.period_to}` : null]].map(([k, v]) => (
           <div key={k as string}>
@@ -93,17 +103,17 @@ export function InvoiceReview({ result, setResult }: { result: Result; setResult
     <div>
       <Warnings items={result.warnings} />
       <h3 className="mb-3 text-lg font-semibold">Invoice details</h3>
-      <div className="mb-8 grid grid-cols-1 gap-x-4 gap-y-4 @[34rem]:grid-cols-2 @[56rem]:grid-cols-3">
+      <div className="invoice-fields mb-8 gap-x-4 gap-y-4">
         {FIELDS.map(([k, label, type]) => {
           const uncertain = conf[k] !== undefined && conf[k] < low
           return (
             <div key={k}>
               <label htmlFor={`f-${k}`} className="font-mono text-[9px] uppercase tracking-[0.1em] text-ink-muted">{label}</label>
-              <input id={`f-${k}`} className={`input mt-1 py-1.5 ${type === 'number' ? 'text-right tabular-nums' : ''} ${uncertain ? 'border-amber-500 bg-amber-50' : ''}`}
+              <input id={`f-${k}`} className={`input mt-1 py-1.5 ${type === 'number' ? 'text-right tabular-nums' : ''} ${uncertain ? 'border-amber-500 bg-amber-50 dark:bg-amber-950/30' : ''}`}
                 type={type === 'date' ? 'date' : 'text'} inputMode={type === 'number' ? 'decimal' : undefined}
                 defaultValue={f[k] ?? ''} key={`${k}-${String(f[k])}`}
                 onBlur={(e) => setField(k, type, e.target.value)} />
-              {uncertain && <p className="mt-1 flex items-center gap-1 font-mono text-[9px] uppercase tracking-[0.08em] text-amber-800"><AlertTriangle className="h-3 w-3" aria-hidden /> Low confidence ({Math.round(conf[k])}%) — verify</p>}
+              {uncertain && <p className="mt-1 flex items-center gap-1 font-mono text-[9px] uppercase tracking-[0.08em] text-amber-800 dark:text-amber-200"><AlertTriangle className="h-3 w-3" aria-hidden /> Low confidence ({Math.round(conf[k])}%) — verify</p>}
             </div>
           )
         })}
@@ -173,8 +183,8 @@ export function TablesReview({ result, setResult }: { result: Result; setResult:
                 <input className="input w-48 py-1 text-sm" value={t.name} onChange={(e) => setTable(t.id, { name: e.target.value })} /></label>
               <span className="ml-auto font-mono text-[9px] uppercase tracking-[0.1em] text-ink-muted">Page {t.page} · {t.method === 'ocr' ? 'OCR (approximate)' : 'Selectable text'}</span>
             </div>
-            {t.warnings?.map((w: string) => <p key={w} className="mb-2 text-xs text-amber-800">⚠ {w}</p>)}
-            <fieldset className="mb-4 grid grid-cols-1 gap-2 @[34rem]:grid-cols-3 @[50rem]:grid-cols-4">
+            {t.warnings?.map((w: string) => <p key={w} className="mb-2 text-xs text-amber-800 dark:text-amber-200">⚠ {w}</p>)}
+            <fieldset className="table-cols mb-4 gap-2">
               <legend className="mb-2 font-mono text-[9px] uppercase tracking-[0.12em] text-ink-muted">Column names</legend>
               {t.columns.map((c: string, i: number) => (
                 <label key={i} className="text-xs"><span className="sr-only">Column {i + 1} name</span>

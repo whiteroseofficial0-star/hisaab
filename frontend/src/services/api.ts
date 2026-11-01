@@ -1,4 +1,4 @@
-import type { JobCreated, JobRef, JobStatus, Result, ToolKey } from '../types'
+import type { Health, JobCreated, JobRef, JobStatus, Result, ToolKey } from '../types'
 
 const BASE = (import.meta.env.VITE_API_BASE as string | undefined) ?? ''
 const API = `${BASE}/api/v1`
@@ -24,8 +24,16 @@ const headers = (job: JobRef, json = false): HeadersInit => ({
   ...(json ? { 'Content-Type': 'application/json' } : {}),
 })
 
+let healthRequest: Promise<Health> | null = null
+export function getHealth(): Promise<Health> {
+  healthRequest ??= fetch(`${API}/health`)
+    .then((res) => (res.ok ? (res.json() as Promise<Health>) : fail(res)))
+    .catch((e) => { healthRequest = null; throw e })
+  return healthRequest
+}
+
 /** Upload with real progress events (fetch cannot report upload progress). */
-export function createJob(tool: ToolKey, files: File[], onProgress: (pct: number) => void, signal: AbortSignal): Promise<JobCreated> {
+export function createJob(tool: ToolKey, files: File[], onProgress: (pct: number) => void, signal: AbortSignal, ocrLang?: string): Promise<JobCreated> {
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest()
     xhr.open('POST', `${API}/jobs`)
@@ -40,6 +48,7 @@ export function createJob(tool: ToolKey, files: File[], onProgress: (pct: number
     signal.addEventListener('abort', () => { xhr.abort(); reject(new ApiError('Upload cancelled.', 'cancelled', 0)) })
     const form = new FormData()
     form.append('tool', tool)
+    if (ocrLang) form.append('ocr_lang', ocrLang)
     files.forEach((f) => form.append('files', f))
     xhr.send(form)
   })
@@ -57,7 +66,7 @@ export async function patchResult(job: JobRef, result: Result): Promise<Result> 
   const res = await fetch(`${API}/jobs/${job.job_id}/result`, { method: 'PATCH', headers: headers(job, true), body: JSON.stringify({ result }) })
   return res.ok ? res.json() : fail(res)
 }
-export async function exportResult(job: JobRef, format: 'xlsx' | 'csv' | 'zip', part?: 'details' | 'line_items'): Promise<{ blob: Blob; filename: string }> {
+export async function exportResult(job: JobRef, format: 'xlsx' | 'csv' | 'zip', part?: 'details' | 'line_items' | 'flat'): Promise<{ blob: Blob; filename: string }> {
   const res = await fetch(`${API}/jobs/${job.job_id}/export`, { method: 'POST', headers: headers(job, true), body: JSON.stringify({ format, part: part ?? null }) })
   if (!res.ok) return fail(res)
   const m = /filename="([^"]+)"/.exec(res.headers.get('Content-Disposition') ?? '')

@@ -4,7 +4,7 @@ import { ArrowUpRight } from 'lucide-react'
 import Workbench from '../features/Workbench'
 import { AdSlot, Breadcrumbs, Faqs } from '../components/Common'
 import { breadcrumbLd, useSeo } from '../hooks/useSeo'
-import { articleLd, collectionPageLd, howToLd, webApplicationLd, webPageLd } from '../lib/seo'
+import { articleLd, collectionPageLd, faqPageLd, howToLd, webApplicationLd, webPageLd } from '../lib/seo'
 import { TOOLS, toolBySlug, toolPath } from '../data/tools'
 import { GUIDES, guideBySlug } from '../data/guides'
 import type { ToolKey, FileKind } from '../types'
@@ -37,11 +37,14 @@ export function Home() {
   useSeo({
     title: 'Hisaab - Convert Documents. Extract Data. Export to Excel.', path: '/',
     description: 'Turn bank statement PDFs, invoices and receipts into editable tables and Excel or CSV files. Open source, privacy-first, no sign-up.',
-    jsonLd: [webApplicationLd({
-      name: 'Hisaab - Document to Excel',
-      description: 'Convert bank statements, invoices, receipts and PDF tables into editable data and Excel or CSV files.',
-      path: '/',
-    })],
+    jsonLd: [
+      webApplicationLd({
+        name: 'Hisaab - Document to Excel',
+        description: 'Convert bank statements, invoices, receipts and PDF tables into editable data and Excel or CSV files.',
+        path: '/',
+      }),
+      faqPageLd(HOME_FAQS),
+    ],
   })
 
   return (
@@ -49,22 +52,24 @@ export function Home() {
       <section className="border-b border-line">
         <div className="mx-auto grid max-w-6xl grid-cols-1 gap-12 px-5 pb-12 pt-12 lg:grid-cols-[1.02fr_0.98fr] lg:items-start lg:gap-16 lg:pb-16 lg:pt-16">
           <div className="min-w-0 lg:pt-4">
-            <SectionLabel>Open-source document conversion</SectionLabel>
-            <h1 className="mt-6 max-w-xl text-[clamp(2.9rem,5.6vw,4.55rem)] leading-[0.98]">
+            <div className="reveal" style={{ animationDelay: '40ms' }}>
+              <SectionLabel>Open-source document conversion</SectionLabel>
+            </div>
+            <h1 className="reveal mt-6 max-w-xl text-[clamp(2.9rem,5.6vw,4.55rem)] leading-[0.98]" style={{ animationDelay: '110ms' }}>
               Financial documents,{' '}
               <em className="text-pine-700">turned into spreadsheets.</em>
             </h1>
-            <p className="mt-6 max-w-lg text-[17px] leading-8 text-ink-soft">
+            <p className="reveal mt-6 max-w-lg text-[17px] leading-8 text-ink-soft" style={{ animationDelay: '190ms' }}>
               Upload a bank statement, invoice, receipt or PDF table. Review the extracted data
               beside the original, correct what needs correcting, then export a real Excel or CSV
               file.
             </p>
-            <p className="mt-5 max-w-md text-sm leading-6 text-ink-muted">
+            <p className="reveal mt-5 max-w-md text-sm leading-6 text-ink-muted" style={{ animationDelay: '260ms' }}>
               No sign-up. No cloud AI. No document sitting around after you are done.
             </p>
           </div>
 
-          <div id="convert" className="min-w-0 scroll-mt-24">
+          <div id="convert" className="reveal-soft min-w-0 scroll-mt-24" style={{ animationDelay: '140ms' }}>
             <div className="border border-line bg-surface shadow-[0_30px_80px_-55px_rgba(28,40,35,0.55)]">
               <div className="flex items-center justify-between border-b border-line px-5 py-3.5">
                 <p className="eyebrow">Conversion desk</p>
@@ -100,7 +105,7 @@ export function Home() {
               </div>
             </div>
 
-            <p className="mt-3 flex items-center justify-between font-mono text-[9px] uppercase tracking-[0.14em] text-ink-muted">
+            <p className="mt-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-1 font-mono text-[9px] uppercase tracking-[0.14em] text-ink-muted">
               <span>Private by default</span>
               <span>Files expire automatically</span>
             </p>
@@ -177,11 +182,11 @@ export function Home() {
         </div>
       </section>
 
-      <section className="bg-ink text-paper">
+      <section className="bg-[#16332C] text-[#F5F1E8]">
         <div className="mx-auto grid max-w-6xl grid-cols-1 gap-10 px-5 py-16 lg:grid-cols-[0.9fr_1.1fr] lg:items-center lg:py-20">
           <div>
-            <p className="eyebrow text-pine-300">03 / Privacy</p>
-            <h2 className="mt-4 max-w-lg text-4xl leading-[1.05] text-paper">Your documents are not training data.</h2>
+            <p className="eyebrow text-[#93B8A7]">03 / Privacy</p>
+            <h2 className="mt-4 max-w-lg text-4xl leading-[1.05] text-[#F5F1E8]">Your documents are not training data.</h2>
           </div>
           <div>
             <p className="max-w-xl text-sm leading-7 text-slate-300">
@@ -189,15 +194,15 @@ export function Home() {
               not sent to third-party AI services, not used for training, and not kept in a public
               folder. Every job has a secret token and can be deleted at any time.
             </p>
-            <ul className="mt-7 grid grid-cols-1 gap-x-8 gap-y-3 border-t border-pine-900 pt-6 text-[13px] text-paper sm:grid-cols-2">
+            <ul className="mt-7 grid grid-cols-1 gap-x-8 gap-y-3 border-t border-[#234F43] pt-6 text-[13px] text-[#F5F1E8] sm:grid-cols-2">
               {['Processed on this server', 'No third-party AI', 'Jobs expire automatically', 'Delete on demand'].map((item) => (
                 <li key={item} className="flex items-center gap-2.5">
-                  <span className="h-1 w-1 bg-pine-300" aria-hidden />
+                  <span className="h-1 w-1 bg-[#93B8A7]" aria-hidden />
                   {item}
                 </li>
               ))}
             </ul>
-            <Link to="/privacy/" className="mt-6 inline-flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.14em] text-pine-200 transition-colors hover:text-paper">
+            <Link to="/privacy/" className="mt-6 inline-flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.14em] text-[#93B8A7] transition-colors hover:text-[#F5F1E8]">
               Read the privacy note <ArrowUpRight className="h-3.5 w-3.5" aria-hidden />
             </Link>
           </div>
@@ -272,7 +277,7 @@ export function ToolsIndex() {
 
       <div className="mt-2 border-b border-line">
         {TOOLS.map((t, i) => (
-          <Link key={t.slug} to={toolPath(t.slug)} className="group grid grid-cols-[2rem_1fr_auto] items-start gap-4 border-b border-line py-5 transition-colors last:border-b-0 hover:bg-surface sm:grid-cols-[2.5rem_1fr_10rem_1rem] sm:items-center sm:gap-6">
+          <Link key={t.slug} to={toolPath(t.slug)} className="group -mx-3 grid grid-cols-[2rem_1fr_auto] items-start gap-4 border-b border-line px-3 py-5 transition-colors last:border-b-0 hover:bg-surface dark:hover:bg-pine-50/60 sm:grid-cols-[2.5rem_1fr_10rem_1rem] sm:items-center sm:gap-6">
             <span className="pt-1 font-mono text-[10px] tracking-[0.12em] text-ink-muted sm:pt-0">{String(i + 1).padStart(2, '0')}</span>
             <div>
               <h2 className="font-sans text-[15px] font-medium text-ink transition-colors group-hover:text-pine-700">{t.name}</h2>
@@ -298,7 +303,7 @@ export function ToolPage() {
       webApplicationLd({ name: `Hisaab - ${t.name}`, description: t.description, path }),
       howToLd({ name: t.h1, steps: t.steps, path }),
       breadcrumbLd([{ name: 'Home', path: '/' }, { name: 'Tools', path: '/tools/' }, { name: t.name, path }]),
-      { '@type': 'FAQPage', mainEntity: t.faqs.map((f) => ({ '@type': 'Question', name: f.q, acceptedAnswer: { '@type': 'Answer', text: f.a } })) },
+      faqPageLd(t.faqs),
     ] : [],
   })
   if (!t) return <div className="mx-auto max-w-3xl px-5 py-16"><h1 className="text-3xl">Tool not found</h1><p className="mt-4"><Link className="text-pine-700 underline underline-offset-2" to="/tools/">See all tools</Link></p></div>
@@ -427,7 +432,7 @@ export function GuidesIndex() {
       <ul className="mt-2 border-b border-line">
         {GUIDES.map((g, i) => (
           <li key={g.slug} className="border-b border-line last:border-b-0">
-            <Link to={`/guides/${g.slug}/`} className="group grid grid-cols-[2rem_1fr_auto] items-start gap-4 py-6 transition-colors hover:bg-surface">
+            <Link to={`/guides/${g.slug}/`} className="group -mx-3 grid grid-cols-[2rem_1fr_auto] items-start gap-4 px-3 py-6 transition-colors hover:bg-surface dark:hover:bg-pine-50/60">
               <span className="pt-1 font-mono text-[10px] tracking-[0.12em] text-ink-muted">{String(i + 1).padStart(2, '0')}</span>
               <div>
                 <h2 className="font-sans text-[15px] font-medium text-ink transition-colors group-hover:text-pine-700">{g.h1}</h2>
@@ -453,6 +458,7 @@ export function GuidePage() {
       breadcrumbLd([{ name: 'Home', path: '/' }, { name: 'Guides', path: '/guides/' }, { name: g.h1, path }]),
     ] : [] })
   if (!g) return <div className="mx-auto max-w-3xl px-5 py-16"><h1 className="text-3xl">Guide not found</h1><Link className="text-pine-700 underline underline-offset-2" to="/guides/">All guides</Link></div>
+  const more = GUIDES.filter((x) => x.slug !== g.slug).slice(0, 3)
 
   return (
     <article className="mx-auto max-w-3xl px-5 py-10">
@@ -468,6 +474,20 @@ export function GuidePage() {
           Open the converter <ArrowUpRight className="h-3.5 w-3.5" aria-hidden />
         </Link>
       </div>
+
+      <nav aria-labelledby="more-guides" className="mt-12 border-t border-line pt-8">
+        <h2 id="more-guides" className="text-xl">Continue reading</h2>
+        <ul className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
+          {more.map((x) => (
+            <li key={x.slug}>
+              <Link to={`/guides/${x.slug}/`} className="group flex items-center justify-between gap-4 border-b border-line py-3 text-sm text-ink transition-colors hover:text-pine-700">
+                {x.h1}
+                <ArrowUpRight className="h-3.5 w-3.5 shrink-0 text-ink-muted" aria-hidden />
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </nav>
     </article>
   )
 }

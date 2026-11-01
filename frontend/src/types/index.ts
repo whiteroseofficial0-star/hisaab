@@ -13,6 +13,21 @@ export interface JobStatus {
 }
 export interface JobRef { job_id: string; token: string }
 
+export interface Health {
+  status: 'ok'
+  version: string
+  ocr_available: boolean
+  ocr: {
+    available: boolean
+    path: string | null
+    version: string | null
+    hint: string | null
+    languages: string[]
+    default_language: string
+  }
+  limits: { max_upload_mb: number; max_pdf_pages: number; max_batch_files: number; retention_minutes: number }
+}
+
 // Results are tool specific JSON documents produced by the backend.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type Result = Record<string, any>
