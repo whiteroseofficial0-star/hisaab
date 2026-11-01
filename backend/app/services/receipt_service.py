@@ -5,14 +5,21 @@ import re
 import uuid
 
 from app.core.errors import ExtractionError
+from app.services import ocr_service
 from app.services.document_service import PageContent
 from app.services.invoice_service import GSTIN_RE, _detect_currency
 from app.utils.dates import DATE_IN_TEXT, parse_date, to_iso
 from app.utils.numbers import last_amount_in, parse_number
 
 LOW_CONF = 65.0
+# An amount token, with or without a currency symbol ("$19.90", "1,234.00", "(5.00)").
+NUM_TOKEN = re.compile(r"[\u20b9$€£]?\s?\(?-?[\d,]+(?:\.\d{1,2})?\)?")
+# The trailing amount is removed to leave a row's label ("Note: Sub Total: $69.40" -> "note: sub total").
+TRAILING_AMOUNT = re.compile(r"\(?[\u20b9$€£]?\s?-?[\d,]+\.\d{1,2}\)?\s*$")
 SUMMARY = re.compile(r"^(sub\s*-?\s*total|total|grand\s*total|amount\s*(paid|due|payable)|net\s*(amount|payable)|balance|"
                      r"tax|gst|cgst|sgst|igst|vat|discount|savings|round|change|cash|tendered)\b", re.I)
+# Same labels, but anywhere in the text before the amount ("Note: Sub Total:", "Amount Total:").
+SUMMARY_LABEL = re.compile(r"sub\s*-?\s*total|subtotal|\b(total|tax|gst|cgst|sgst|igst|vat|discount|savings|rebate|balance|change|cash|tendered|round\s*-?\s*off)\b", re.I)
 PAYMENT = [("UPI", r"\bupi\b|gpay|google\s*pay|phonepe|paytm"), ("Card", r"visa|master\s*card|rupay|amex|debit\s*card|credit\s*card|\bcard\b"),
            ("Cash", r"\bcash\b"), ("Net banking", r"net\s*banking|netbanking")]
 RECEIPT_KEYS = ["merchant", "receipt_number", "date", "time", "description", "subtotal", "tax", "discount",
@@ -24,16 +31,20 @@ def _items(lines) -> list[dict]:
     items = []
     for ln in lines:
         t = ln.text.strip()
-        if SUMMARY.match(t):
+        # A summary line needs an amount: the table header ("No. Description ... Total") has none.
+        if SUMMARY.match(t) or (SUMMARY_LABEL.search(TRAILING_AMOUNT.sub("", t)) and last_amount_in(t) is not None):
             break
         if re.search(r"bill\s*no|receipt|invoice|date|gstin|tel|phone|www|@|^-+$|^=+$", t, re.I):
             continue
         toks = [x for x in t.split() if x not in ("x", "X", "@")]
         nums = []
-        while toks and re.fullmatch(r"[\d,]+(?:\.\d{1,2})?", toks[-1]) and len(nums) < 3:
+        while toks and NUM_TOKEN.fullmatch(toks[-1]) and len(nums) < 3:
             nums.insert(0, toks.pop())
         if not nums or not toks or "." not in nums[-1]:
             continue
+        # Leading row number ("1 Men's Classic Tee ...") is not part of the description.
+        if len(toks) > 1 and toks[0].isdigit() and len(toks[0]) <= 3:
+            toks.pop(0)
         vals = [parse_number(n) for n in nums]
         item = {"id": uuid.uuid4().hex[:10], "description": " ".join(toks), "quantity": None, "unit_price": None, "amount": vals[-1]}
         if len(vals) == 3:
@@ -73,7 +84,8 @@ RECEIPT_FLAG_MESSAGES = {
 def extract_receipt(pages: list[PageContent], source_file: str) -> tuple[dict, list[dict]]:
     lines = [ln for pc in pages for ln in pc.lines]
     if not lines:
-        raise ExtractionError("no_text_found", "No readable text was found in this receipt.")
+        hint = f" {ocr_service.OCR_SETUP_HINT}" if any(pc.ocr_unavailable for pc in pages) else ""
+        raise ExtractionError("no_text_found", "No readable text was found in this receipt." + hint)
     text = "\n".join(ln.text for ln in lines)
     rid = uuid.uuid4().hex[:10]
     row = {k: None for k in RECEIPT_KEYS}
@@ -83,7 +95,8 @@ def extract_receipt(pages: list[PageContent], source_file: str) -> tuple[dict, l
         if len(re.findall(r"[A-Za-z]", t)) >= 3 and not re.search(r"receipt|invoice|tax|bill|gstin|welcome|date|tel|phone|www|@", t, re.I):
             row["merchant"] = t
             break
-    m = re.search(r"(?:bill|receipt|invoice|order|inv)\s*(?:no\.?|number|#)\s*[:#\-]?\s*([A-Z0-9][A-Z0-9\-/]*)", text, re.I)
+    # Needs an explicit marker ("no", "number", "#") so "Receipt Date:" is never read as a number.
+    m = re.search(r"(?:bill|receipt|invoice|order|inv)\s*(?:no\.?|number|#)\s*[:#\-]*\s*#?\s*([A-Z0-9][A-Z0-9\-/]*)", text, re.I)
     row["receipt_number"] = m[1] if m else None
     for dm in DATE_IN_TEXT.finditer(text):
         d = parse_date(dm[0])
@@ -107,19 +120,22 @@ def extract_receipt(pages: list[PageContent], source_file: str) -> tuple[dict, l
     tax_lines, total_tax = [], None
     for ln in lines:
         t = ln.text.strip()
-        tl = t.lower()
         amt = last_amount_in(t)
         if amt is None:
             continue
-        if re.match(r"sub\s*-?\s*total", tl):
+        # Match the label, not the start of the line: "Note: Sub Total:", "Amount Total:" etc.
+        label = TRAILING_AMOUNT.sub("", t).lower()
+        if not label.strip(" :$\u20b9"):
+            continue
+        if re.search(r"sub\s*-?\s*total|subtotal", label):
             row["subtotal"] = amt
-        elif re.match(r"(total\s*(tax|gst))", tl):
+        elif re.search(r"total\s*(tax|gst)|tax\s*total", label):
             total_tax = amt
-        elif re.match(r"(cgst|sgst|igst|gst|vat|tax)", tl):
+        elif re.search(r"\b(cgst|sgst|igst|gst|vat|tax)\b", label):
             tax_lines.append(amt)
-        elif re.match(r"(discount|savings)", tl):
+        elif re.search(r"discount|savings|rebate", label):
             row["discount"] = amt
-        elif re.match(r"(grand\s*total|total|amount\s*(paid|due|payable)|net\s*(amount|payable)|balance\s*due)", tl):
+        elif re.search(r"grand\s*total|\btotal\b|amount\s*(paid|due|payable)|net\s*(amount|payable)|balance\s*due", label):
             row["total"] = amt
     row["tax"] = total_tax if total_tax is not None else (round(sum(tax_lines), 2) if tax_lines else None)
     items = _items(lines)
@@ -134,5 +150,6 @@ def extract_receipt(pages: list[PageContent], source_file: str) -> tuple[dict, l
             row["flags"].append("low_ocr_confidence")
     row["flags"] += validate_receipt(row, items)
     if row["total"] is None and row["merchant"] is None:
-        raise ExtractionError("no_receipt_fields_found", "Could not find receipt details in this file.")
+        hint = f" {ocr_service.OCR_SETUP_HINT}" if any(pc.ocr_unavailable for pc in pages) else ""
+        raise ExtractionError("no_receipt_fields_found", "Could not find receipt details in this file." + hint)
     return row, items

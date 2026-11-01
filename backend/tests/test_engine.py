@@ -110,6 +110,22 @@ class TestBankText(Base):
     def test_full_account_number_never_in_result(self):
         self.assertNotIn("555500001234", str(self.bank_result()))
 
+    def test_yearless_dates_and_beginning_ending_balances(self):
+        """Statements that print 10/02 instead of 10/02/2025 must still produce rows."""
+        p = self.tmp / "us.pdf"
+        synth.make_us_bank_statement_pdf(p)
+        r = bank.extract_bank_statement(read_document(p, "pdf", self.settings))
+        tx = r["transactions"]
+        self.assertEqual(len(tx), 4)
+        self.assertEqual([t["date"][-5:] for t in tx], ["10-02", "10-03", "10-05", "11-09"])
+        self.assertEqual(r["metadata"]["opening_balance"], 69.96)
+        self.assertEqual(r["metadata"]["closing_balance"], 806.76)
+        self.assertEqual(tx[0]["debit"], 4.23)
+        self.assertEqual(tx[1]["credit"], 763.01)
+        self.assertFalse([f for t in tx for f in t["flags"]])
+        self.assertEqual(r["summary"]["computed_closing_balance"], r["summary"]["closing_balance"])
+        self.assertTrue(any("without a year" in w for w in r["warnings"]))
+
     def test_date_normalisation(self):
         self.assertEqual(parse_date("05/04/2025").isoformat(), "2025-04-05")
         self.assertEqual(parse_date("5-Apr-25").isoformat(), "2025-04-05")
@@ -249,6 +265,44 @@ class TestExport(Base):
         d, _, _ = ex.export_result(r, "csv", part="line_items")
         self.assertIn("Widget A", d.decode("utf-8-sig"))
 
+    def test_receipt_exports_include_line_items(self):
+        p = self.tmp / "us-receipt.pdf"
+        synth.make_us_receipt_pdf(p)
+        result = {"tool": "receipt", "receipts": [], "line_items": [], "warnings": [],
+                  "flag_messages": receipt_service.RECEIPT_FLAG_MESSAGES}
+        row, items = receipt_service.extract_receipt(read_document(p, "pdf", self.settings), "us.pdf")
+        result["receipts"], result["line_items"] = [row], items
+
+        # Excel: items on their own sheet, each row carrying its receipt, with a SUM total.
+        data, _, _ = ex.export_result(result, "xlsx")
+        wb = load_workbook(io.BytesIO(data))
+        self.assertEqual(wb.sheetnames, ["Receipts", "Line Items"])
+        li = wb["Line Items"]
+        self.assertEqual(li["A1"].value, "Receipt")
+        self.assertEqual(li["B2"].value, "0004444")
+        self.assertEqual(li["C2"].value.date().isoformat(), "2025-06-26")
+        self.assertEqual(li["E3"].value, "Women's V-Neck Tee")
+        self.assertEqual(li["H4"].value, 39.6)
+        self.assertTrue(str(li["H6"].value).startswith("=SUM"))
+
+        # Flat CSV: one row per item, receipt columns repeated so it can be imported directly.
+        flat, name, _ = ex.export_result(result, "csv", part="flat")
+        self.assertEqual(name, "hisaab-receipts-with-line-items.csv")
+        rows = list(csv.reader(io.StringIO(flat.decode("utf-8-sig"))))
+        self.assertEqual(rows[0][:4], ["Merchant", "Receipt number", "Date", "Currency"])
+        self.assertEqual(len(rows), 4)  # header + 3 items
+        self.assertEqual(rows[1][1], "0004444")
+        self.assertEqual(rows[1][7], "Men's Classic Tee")
+        self.assertEqual(rows[3][10], "39.60")
+        self.assertEqual(rows[1][4], "69.40")  # receipt subtotal repeated on each item row
+
+        # A receipt with no parsed items is still exported by the flat CSV.
+        empty = {**result, "receipts": [{**row, "merchant": "No Items Shop"}], "line_items": []}
+        flat, _, _ = ex.export_result(empty, "csv", part="flat")
+        rows = list(csv.reader(io.StringIO(flat.decode("utf-8-sig"))))
+        self.assertEqual(len(rows), 2)
+        self.assertEqual(rows[1][0], "No Items Shop")
+
     def test_tables_selected_only_and_text_preserved(self):
         res = {"tool": "tables", "tables": [
             {"id": "1", "name": "A", "columns": ["Code", "Qty"], "rows": [["00123", "1,234.50"], ["=1+1", "7"]], "selected": True},
@@ -295,6 +349,21 @@ class TestOtherTools(Base):
         self.assertEqual((row["subtotal"], row["tax"], row["total"], row["payment_method"]), (200.0, 10.0, 210.0, "UPI"))
         self.assertEqual(len(items), 3)
         self.assertEqual(row["flags"], [])
+
+    def test_us_receipt_with_currency_symbols_and_note_labels(self):
+        """Regression: "$19.90" broke item parsing and "Note: Sub Total:" broke summaries."""
+        p = self.tmp / "us-receipt.pdf"
+        synth.make_us_receipt_pdf(p)
+        row, items = receipt_service.extract_receipt(read_document(p, "pdf", self.settings), "us.pdf")
+        self.assertEqual(row["merchant"], "ARTGROUP T-Shirt Emporium (Fictional)")
+        self.assertEqual(row["receipt_number"], "0004444")
+        self.assertEqual(row["date"], "2025-06-26")
+        self.assertEqual((row["subtotal"], row["tax"], row["total"]), (69.4, 10.0, 79.4))
+        self.assertEqual(row["currency"], "USD")
+        self.assertEqual([i["description"] for i in items], ["Men's Classic Tee", "Women's V-Neck Tee", "Kids' Crew Neck Tee"])
+        self.assertEqual([i["quantity"] for i in items], [1.0, 1.0, 4.0])
+        self.assertEqual([i["amount"] for i in items], [19.9, 9.9, 39.6])
+        self.assertEqual(row["flags"], [])  # items add up to the subtotal, subtotal + tax = total
 
     @unittest.skipUnless(OCR, "Tesseract not installed")
     def test_receipt_image_ocr(self):

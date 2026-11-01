@@ -259,19 +259,47 @@ RECEIPT_COLS = [("Merchant", "merchant", "text"), ("Receipt number", "receipt_nu
                 ("Tax", "tax", "number"), ("Discount", "discount", "number"), ("Total", "total", "number"),
                 ("Currency", "currency", "text"), ("Payment method", "payment_method", "text"),
                 ("Tax ID", "tax_id", "text"), ("Source file", "source_file", "text")]
-RITEM_COLS = [("Receipt", "receipt_label", "text"), ("Description", "description", "text"),
+RITEM_COLS = [("Receipt", "receipt_label", "text"), ("Receipt number", "receipt_number", "text"),
+              ("Date", "date", "date"), ("Currency", "currency", "text"), ("Description", "description", "text"),
               ("Quantity", "quantity", "number"), ("Unit price", "unit_price", "number"), ("Amount", "amount", "number")]
+# One row per line item, with the receipt it belongs to - the shape accounting tools import.
+FLAT_COLS = [("Merchant", "merchant", "text"), ("Receipt number", "receipt_number", "text"),
+             ("Date", "date", "date"), ("Currency", "currency", "text"),
+             ("Receipt subtotal", "subtotal", "number"), ("Receipt tax", "tax", "number"),
+             ("Receipt total", "total", "number"), ("Item description", "description", "text"),
+             ("Quantity", "quantity", "number"), ("Unit price", "unit_price", "number"), ("Item amount", "amount", "number")]
+
+
+def _receipt_items(result):
+    """Line items enriched with their receipt header, plus the receipt label used in exports."""
+    receipts, items = result["receipts"], result.get("line_items", [])
+    by_id = {r["id"]: r for r in receipts}
+    label = {rid: f'{r.get("merchant") or r.get("source_file") or ""} {r.get("date") or ""}'.strip()
+             for rid, r in by_id.items()}
+    out = []
+    for i in items:
+        head = by_id.get(i.get("receipt_id"), {})
+        out.append({**{k: head.get(k) for k in ("merchant", "receipt_number", "date", "currency", "subtotal", "tax", "total")},
+                    **i, "receipt_label": label.get(i.get("receipt_id"), "")})
+    return out
 
 
 def _export_receipts(result, fmt, part, bom):
-    receipts, items = result["receipts"], result.get("line_items", [])
-    label = {r["id"]: f'{r.get("merchant") or r.get("source_file") or ""} {r.get("date") or ""}'.strip() for r in receipts}
-    items = [{**i, "receipt_label": label.get(i.get("receipt_id"), "")} for i in items]
+    receipts = result["receipts"]
+    items = _receipt_items(result)
     if fmt in ("csv", "zip"):
         a = _csv_bytes([c[0] for c in RECEIPT_COLS], [[r.get(c[1]) for c in RECEIPT_COLS] for r in receipts], bom)
         b = _csv_bytes([c[0] for c in RITEM_COLS], [[i.get(c[1]) for c in RITEM_COLS] for i in items], bom)
         if fmt == "zip":
             return _zip({"receipts.csv": a, "receipt_line_items.csv": b}), "hisaab-receipts-csv.zip", ZIP_MIME
+        if part == "flat":
+            # Receipts without any parsed line items still appear, so nothing is silently dropped.
+            with_items = {i.get("receipt_id") for i in result.get("line_items", [])}
+            flat = _receipt_items(result) + [{**{k: r.get(k) for k in ("merchant", "receipt_number", "date", "currency", "subtotal", "tax", "total")},
+                                              "id": None, "description": None, "quantity": None, "unit_price": None, "amount": None}
+                                             for r in receipts if r["id"] not in with_items]
+            data = _csv_bytes([c[0] for c in FLAT_COLS], [[i.get(c[1]) for c in FLAT_COLS] for i in flat], bom)
+            return data, "hisaab-receipts-with-line-items.csv", CSV_MIME
         if part == "line_items":
             return b, "hisaab-receipt-line-items.csv", CSV_MIME
         return a, "hisaab-receipts.csv", CSV_MIME
@@ -280,7 +308,7 @@ def _export_receipts(result, fmt, part, bom):
     ws.title = "Receipts"
     _table_sheet(ws, RECEIPT_COLS, receipts, add_totals=("Subtotal", "Tax", "Discount", "Total"))
     wl = wb.create_sheet("Line Items")
-    _table_sheet(wl, RITEM_COLS, items)
+    _table_sheet(wl, RITEM_COLS, items, add_totals=("Amount",))
     return _wb_bytes(wb), "hisaab-receipts.xlsx", XLSX_MIME
 
 
